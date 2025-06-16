@@ -1,0 +1,14 @@
+[project]
+name = "spf-time"
+version = "0.1.0"
+description = "Employee Time Tracking Application using Kivy"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "kivy>=2.3.1",
+    "sendgrid>=6.12.4",
+    "toml>=0.10.2",
+]
+
+[project.scripts]
+spf-time = "spf_time.main:main"

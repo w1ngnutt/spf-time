@@ -1,0 +1,4 @@
+.claude
+.python-version
+*.db
+**/__pycache__/
