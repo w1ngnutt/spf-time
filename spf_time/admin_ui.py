@@ -577,7 +577,7 @@ class AdminUI(BoxLayout):
             
             # Send email
             date_range = f"{start_date.strftime('%m/%d/%Y')} - {end_date.strftime('%m/%d/%Y')}"
-            success = self.email_service.send_report_email(csv_data, date_range)
+            success = self.email_service.send_report_email(csv_data, date_range, records, employees, start_date, end_date)
             
             if success:
                 self.show_message("Report sent successfully!")
