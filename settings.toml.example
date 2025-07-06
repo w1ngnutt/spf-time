@@ -1,0 +1,75 @@
+# Employee Time Tracking Application Settings
+
+[payroll]
+# Day of the week when payroll period begins (0=Monday, 6=Sunday)
+start_day = 3
+
+[time_tracking]
+# Maximum hours before employee is automatically clocked out
+auto_clock_out_hours = 12
+
+# Minimum break time between clock in/out operations (in minutes)
+min_break_time_minutes = 1
+
+# Grace period for late clock ins/outs (in minutes)
+grace_period_minutes = 5
+
+[employees]
+# List of employees
+names = [
+    "Bob",
+    "Tom", 
+    "Alan",
+]
+
+[database]
+# Database file path (relative to application directory)
+db_path = "time_tracking.db"
+
+[ui]
+# UI settings
+window_title = "Your Company Time Tracking"
+window_width = 800
+window_height = 600
+
+# Button colors
+clock_in_color = [0.2, 0.8, 0.2, 1.0]    # Green
+clock_out_color = [0.8, 0.2, 0.2, 1.0]   # Red
+disabled_color = [0.5, 0.5, 0.5, 1.0]    # Gray
+
+[reports]
+# Report generation settings
+default_date_range_days = 14  # Default to last 2 weeks
+export_formats = ["csv", "xlsx"]
+
+[notifications]
+# Enable/disable different notification types
+enable_break_reminders = true
+break_reminder_hours = 4  # Remind after 4 hours of continuous work
+
+enable_overtime_alerts = true  
+overtime_threshold_hours = 8  # Alert when approaching overtime
+
+[security]
+# Security settings
+require_admin_for_employee_management = false
+session_timeout_minutes = 60
+
+[admin]
+# Admin access settings
+pin = "1234"  # 4-digit PIN for admin access
+
+[email]
+# Email configuration for SendGrid
+sendgrid_api_key = "none"
+from_email = "time@your-company-domain.com"
+from_name = "Your Company Time Tracking System"
+
+# Email recipients for reports
+report_recipients = [
+    "manager@your-company-domain.com",
+]
+
+# Email settings
+subject_template = "Time Tracking Report - {date_range}"
+enable_email_reports = true

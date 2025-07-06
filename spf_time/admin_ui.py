@@ -16,6 +16,7 @@ from .database import DatabaseManager, TimeRecord
 from .config import Config
 from .email_service import EmailService
 from .time_picker import QuickTimePickerDialog, DateTimePickerDialog
+from .report_generator import ReportGenerator
 
 class NumericKeypad(GridLayout):
     def __init__(self, on_digit_press, on_clear, on_enter, **kwargs):
@@ -734,6 +735,7 @@ class AdminUI(BoxLayout):
         self.db_manager = db_manager
         self.config = config
         self.email_service = EmailService(config)
+        self.report_generator = ReportGenerator(config, db_manager)
         
         self.orientation = 'vertical'
         self.spacing = '10dp'
@@ -870,25 +872,6 @@ class AdminUI(BoxLayout):
         except Exception as e:
             self.show_message(f"Error deleting record: {str(e)}")
     
-    def get_previous_two_weeks_date_range(self) -> Tuple[datetime.date, datetime.date]:
-        """Calculate date range for the previous two complete work weeks"""
-        today = datetime.date.today()
-        work_week_start_day = self.config.payroll.start_day
-        
-        # Find the start of the current work week
-        days_since_start = (today.weekday() - work_week_start_day) % 7
-        current_week_start = today - datetime.timedelta(days=days_since_start)
-        
-        # Go back to the start of the previous week (1 week ago)
-        previous_week_start = current_week_start - datetime.timedelta(weeks=1)
-        
-        # Go back one more week to get the start of two weeks ago
-        two_weeks_ago_start = previous_week_start - datetime.timedelta(weeks=1)
-        
-        # End date is the last day of the previous week (day before current week starts)
-        end_date = current_week_start - datetime.timedelta(days=1)
-        
-        return two_weeks_ago_start, end_date
     
     def send_email_report(self):
         if not self.config.email.enable_email_reports:
@@ -900,22 +883,18 @@ class AdminUI(BoxLayout):
             return
         
         try:
-            # Generate report data for previous two complete work weeks
-            start_date, end_date = self.get_previous_two_weeks_date_range()
+            # Generate report data for previous two complete work weeks (2 weeks)
+            records, employees, start_date, end_date = self.report_generator.get_report_data(2)
             
-            records = self.db_manager.get_time_records(
-                start_date=start_date,
-                end_date=end_date
-            )
+            # Create CSV report using shared generator
+            csv_data = self.report_generator.generate_csv_report(records, employees)
             
-            employees = {emp.id: emp.name for emp in self.db_manager.get_employees(active_only=False)}
-            
-            # Create CSV report
-            csv_data = self.generate_csv_report(records, employees)
+            # Generate HTML tables for email
+            html_tables = self.report_generator.generate_email_tables(records, employees)
             
             # Send email
             date_range = f"{start_date.strftime('%m/%d/%Y')} - {end_date.strftime('%m/%d/%Y')}"
-            success = self.email_service.send_report_email(csv_data, date_range, records, employees, start_date, end_date)
+            success = self.email_service.send_report_email(csv_data, date_range, records, employees, start_date, end_date, html_tables)
             
             if success:
                 self.show_message("Report sent successfully!")
@@ -934,28 +913,6 @@ class AdminUI(BoxLayout):
         )
         add_dialog.open()
     
-    def generate_csv_report(self, records: List[TimeRecord], employees: dict) -> str:
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Write header
-        writer.writerow(['Employee', 'Date', 'Clock In', 'Clock Out', 'Duration (Hours)'])
-        
-        for record in records:
-            employee_name = employees.get(record.employee_id, 'Unknown')
-            date = record.clock_in.strftime('%Y-%m-%d')
-            clock_in = record.clock_in.strftime('%H:%M:%S')
-            clock_out = record.clock_out.strftime('%H:%M:%S') if record.clock_out else 'Still Clocked In'
-            
-            if record.clock_out:
-                duration = record.clock_out - record.clock_in
-                duration_hours = round(duration.total_seconds() / 3600, 2)
-            else:
-                duration_hours = 'Ongoing'
-            
-            writer.writerow([employee_name, date, clock_in, clock_out, duration_hours])
-        
-        return output.getvalue()
     
     def show_message(self, message: str):
         popup = Popup(

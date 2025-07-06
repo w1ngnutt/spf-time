@@ -121,16 +121,16 @@ class EmailService:
         
         return '\n'.join(html_tables)
     
-    def send_report_email(self, csv_data: str, date_range: str, records: List[TimeRecord] = None, employees: Dict[int, str] = None, start_date: datetime.date = None, end_date: datetime.date = None) -> bool:
+    def send_report_email(self, csv_data: str, date_range: str, records: List[TimeRecord] = None, employees: Dict[int, str] = None, start_date: datetime.date = None, end_date: datetime.date = None, html_tables: str = None) -> bool:
         try:
             sg = sendgrid.SendGridAPIClient(api_key=self.config.email.sendgrid_api_key)
             
             current_date = datetime.datetime.now().strftime('%m/%d/%Y')
             subject = self.config.email.subject_template.format(date_range=date_range) + f" - Generated {current_date}"
             
-            # Generate hours table if data provided
-            hours_table = ""
-            if records and employees and start_date and end_date:
+            # Use provided HTML tables or generate hours table
+            hours_table = html_tables if html_tables else ""
+            if not hours_table and records and employees and start_date and end_date:
                 hours_table = self.generate_hours_table(records, employees, start_date, end_date)
             
             html_content = f"""
