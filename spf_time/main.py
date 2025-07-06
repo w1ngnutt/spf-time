@@ -1,3 +1,9 @@
+# Configure touch settings before importing other Kivy modules
+from kivy.config import Config
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+Config.set('postproc', 'double_tap_time', '250')
+Config.set('postproc', 'double_tap_distance', '20')
+
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -6,6 +12,7 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
 from kivy.uix.popup import Popup
+from kivy.core.window import Window
 import threading
 import datetime
 from typing import Dict
@@ -19,9 +26,9 @@ class EmployeeRow(BoxLayout):
         super().__init__(**kwargs)
         self.orientation = 'horizontal'
         self.size_hint_y = None
-        self.height = '48dp'
-        self.spacing = '10dp'
-        self.padding = ['10dp', '5dp']
+        self.height = '80dp'  # Increased from 48dp for better touch targets
+        self.spacing = '15dp'  # Increased spacing
+        self.padding = ['15dp', '10dp']  # Increased padding
         
         self.employee = employee
         self.db_manager = database_manager
@@ -29,24 +36,27 @@ class EmployeeRow(BoxLayout):
         
         self.name_label = Label(
             text=employee.name,
-            size_hint_x = 0.6,
+            size_hint_x = 0.5,  # Adjusted proportions for tall screen
             text_size=(None, None),
             halign='left',
-            valign='middle'
+            valign='middle',
+            font_size='24sp'  # Increased from default 15sp
         )
         
         self.status_label = Label(
             text='Clocked Out',
-            size_hint_x = 0.2,
+            size_hint_x = 0.3,  # Increased width for status
             text_size=(None, None),
             halign='center',
-            valign='middle'
+            valign='middle',
+            font_size='20sp'  # Increased font size
         )
         
         self.clock_button = Button(
             text='Clock In',
             size_hint_x = 0.2,
-            background_color=config.ui.clock_in_color
+            background_color=config.ui.clock_in_color,
+            font_size='18sp'  # Increased button font size
         )
         self.clock_button.bind(on_press=self.toggle_clock)
         
@@ -116,15 +126,31 @@ class TimeTrackingApp(App):
         self.employee_rows = {}
         
         self.title = self.config_manager.ui.window_title
+        
+        # Set up fullscreen mode
+        Window.fullscreen = 'auto'
+        Window.bind(on_key_down=self.on_key_down)
+    
+    def on_key_down(self, window, key, scancode, codepoint, modifier):
+        """Handle keyboard shortcuts"""
+        # Press Escape to toggle fullscreen
+        if key == 27:  # Escape key
+            if Window.fullscreen:
+                Window.fullscreen = False
+            else:
+                Window.fullscreen = 'auto'
+            return True
+        return False
     
     def build(self):
-        main_layout = BoxLayout(orientation='vertical', padding='10dp', spacing='10dp')
+        main_layout = BoxLayout(orientation='vertical', padding='20dp', spacing='20dp')  # Increased padding and spacing
         
         header = Label(
             text=self.config_manager.ui.window_title,
             size_hint_y=None,
-            height='50dp',
-            font_size='20sp'
+            height='80dp',  # Increased height
+            font_size='32sp',  # Increased from 20sp
+            bold=True
         )
         main_layout.add_widget(header)
         
@@ -132,7 +158,7 @@ class TimeTrackingApp(App):
         self.employee_grid = GridLayout(
             cols=1,
             size_hint_y=None,
-            spacing='5dp'
+            spacing='15dp'  # Increased spacing between employee rows
         )
         self.employee_grid.bind(minimum_height=self.employee_grid.setter('height'))
         
@@ -143,8 +169,9 @@ class TimeTrackingApp(App):
         admin_btn = Button(
             text='Admin Settings',
             size_hint_y=None,
-            height='50dp',
-            background_color=[0.6, 0.6, 0.6, 1]
+            height='70dp',  # Increased height
+            background_color=[0.6, 0.6, 0.6, 1],
+            font_size='22sp'  # Increased font size
         )
         admin_btn.bind(on_press=self.show_admin_login)
         main_layout.add_widget(admin_btn)

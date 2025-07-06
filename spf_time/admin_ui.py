@@ -31,6 +31,10 @@ class NumericKeypad(GridLayout):
         self.on_clear = on_clear
         self.on_enter = on_enter
         
+        # Touch debouncing - prevent rapid successive presses
+        self.last_press_time = {}
+        self.debounce_delay = 0.3  # 300ms between presses
+        
         # Number buttons 1-9
         for i in range(1, 10):
             btn = Button(
@@ -39,7 +43,7 @@ class NumericKeypad(GridLayout):
                 size_hint_y=None,
                 height='80dp'
             )
-            btn.bind(on_press=lambda x, digit=i: self.on_digit_press(str(digit)))
+            btn.bind(on_press=lambda x, digit=i: self.debounced_digit_press(str(digit)))
             self.add_widget(btn)
         
         # Bottom row: Clear, 0, Enter
@@ -50,7 +54,7 @@ class NumericKeypad(GridLayout):
             height='80dp',
             background_color=[1, 0.5, 0.5, 1]
         )
-        clear_btn.bind(on_press=lambda x: self.on_clear())
+        clear_btn.bind(on_press=lambda x: self.debounced_clear())
         self.add_widget(clear_btn)
         
         zero_btn = Button(
@@ -59,7 +63,7 @@ class NumericKeypad(GridLayout):
             size_hint_y=None,
             height='80dp'
         )
-        zero_btn.bind(on_press=lambda x: self.on_digit_press('0'))
+        zero_btn.bind(on_press=lambda x: self.debounced_digit_press('0'))
         self.add_widget(zero_btn)
         
         enter_btn = Button(
@@ -69,8 +73,44 @@ class NumericKeypad(GridLayout):
             height='80dp',
             background_color=[0.5, 1, 0.5, 1]
         )
-        enter_btn.bind(on_press=lambda x: self.on_enter())
+        enter_btn.bind(on_press=lambda x: self.debounced_enter())
         self.add_widget(enter_btn)
+    
+    def debounced_digit_press(self, digit):
+        """Prevent rapid successive digit presses"""
+        import time
+        current_time = time.time()
+        
+        if digit in self.last_press_time:
+            if current_time - self.last_press_time[digit] < self.debounce_delay:
+                return  # Ignore this press
+        
+        self.last_press_time[digit] = current_time
+        self.on_digit_press(digit)
+    
+    def debounced_clear(self):
+        """Prevent rapid successive clear presses"""
+        import time
+        current_time = time.time()
+        
+        if 'clear' in self.last_press_time:
+            if current_time - self.last_press_time['clear'] < self.debounce_delay:
+                return
+        
+        self.last_press_time['clear'] = current_time
+        self.on_clear()
+    
+    def debounced_enter(self):
+        """Prevent rapid successive enter presses"""
+        import time
+        current_time = time.time()
+        
+        if 'enter' in self.last_press_time:
+            if current_time - self.last_press_time['enter'] < self.debounce_delay:
+                return
+        
+        self.last_press_time['enter'] = current_time
+        self.on_enter()
 
 class PinEntryDialog(Popup):
     def __init__(self, config: Config, on_success_callback, **kwargs):
