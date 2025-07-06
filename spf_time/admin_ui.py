@@ -22,10 +22,10 @@ class NumericKeypad(GridLayout):
     def __init__(self, on_digit_press, on_clear, on_enter, **kwargs):
         super().__init__(**kwargs)
         self.cols = 3
-        self.spacing = '10dp'
+        self.spacing = '20dp'  # Increased spacing to prevent cross-button touches
         self.size_hint = (None, None)
-        self.width = '300dp'
-        self.height = '400dp'
+        self.width = '360dp'  # Increased width to accommodate spacing
+        self.height = '480dp'  # Increased height to accommodate spacing
         
         self.on_digit_press = on_digit_press
         self.on_clear = on_clear
@@ -33,7 +33,10 @@ class NumericKeypad(GridLayout):
         
         # Touch debouncing - prevent rapid successive presses
         self.last_press_time = {}
-        self.debounce_delay = 0.3  # 300ms between presses
+        self.debounce_delay = 0.5  # Increased to 500ms for better filtering
+        
+        # Multiple touch prevention - only allow one touch at a time
+        self.touch_in_progress = False
         
         # Number buttons 1-9
         for i in range(1, 10):
@@ -77,40 +80,94 @@ class NumericKeypad(GridLayout):
         self.add_widget(enter_btn)
     
     def debounced_digit_press(self, digit):
-        """Prevent rapid successive digit presses"""
+        """Prevent rapid successive digit presses and multiple simultaneous touches"""
         import time
         current_time = time.time()
         
+        # Check if any touch is already in progress
+        if self.touch_in_progress:
+            return
+        
+        # Check debounce timing
         if digit in self.last_press_time:
             if current_time - self.last_press_time[digit] < self.debounce_delay:
                 return  # Ignore this press
         
+        # Check if any other button was pressed very recently (within 100ms)
+        for key, last_time in self.last_press_time.items():
+            if current_time - last_time < 0.1:  # 100ms global debounce
+                return
+        
+        # Set touch in progress flag
+        self.touch_in_progress = True
         self.last_press_time[digit] = current_time
+        
+        # Execute the press
         self.on_digit_press(digit)
+        
+        # Reset touch flag after a short delay
+        from kivy.clock import Clock
+        Clock.schedule_once(lambda dt: setattr(self, 'touch_in_progress', False), 0.2)
     
     def debounced_clear(self):
-        """Prevent rapid successive clear presses"""
+        """Prevent rapid successive clear presses and multiple simultaneous touches"""
         import time
         current_time = time.time()
         
+        # Check if any touch is already in progress
+        if self.touch_in_progress:
+            return
+        
+        # Check debounce timing
         if 'clear' in self.last_press_time:
             if current_time - self.last_press_time['clear'] < self.debounce_delay:
                 return
         
+        # Check if any other button was pressed very recently
+        for key, last_time in self.last_press_time.items():
+            if current_time - last_time < 0.1:
+                return
+        
+        # Set touch in progress flag
+        self.touch_in_progress = True
         self.last_press_time['clear'] = current_time
+        
+        # Execute the press
         self.on_clear()
+        
+        # Reset touch flag after a short delay
+        from kivy.clock import Clock
+        Clock.schedule_once(lambda dt: setattr(self, 'touch_in_progress', False), 0.2)
     
     def debounced_enter(self):
-        """Prevent rapid successive enter presses"""
+        """Prevent rapid successive enter presses and multiple simultaneous touches"""
         import time
         current_time = time.time()
         
+        # Check if any touch is already in progress
+        if self.touch_in_progress:
+            return
+        
+        # Check debounce timing
         if 'enter' in self.last_press_time:
             if current_time - self.last_press_time['enter'] < self.debounce_delay:
                 return
         
+        # Check if any other button was pressed very recently
+        for key, last_time in self.last_press_time.items():
+            if current_time - last_time < 0.1:
+                return
+        
+        # Set touch in progress flag
+        self.touch_in_progress = True
         self.last_press_time['enter'] = current_time
+        
+        # Execute the press
         self.on_enter()
+        
+        # Reset touch flag after a short delay
+        from kivy.clock import Clock
+        Clock.schedule_once(lambda dt: setattr(self, 'touch_in_progress', False), 0.2)
 
 class PinEntryDialog(Popup):
     def __init__(self, config: Config, on_success_callback, **kwargs):
