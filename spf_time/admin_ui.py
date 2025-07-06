@@ -5,9 +5,10 @@ from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
+from kivy.uix.spinner import Spinner
 from kivy.clock import Clock
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import csv
 import io
 
@@ -417,6 +418,316 @@ class TimeEditDialog(Popup):
         self.on_save_callback(self.record)
         self.dismiss()
 
+class TouchKeypad(BoxLayout):
+    def __init__(self, on_input_callback, **kwargs):
+        super().__init__(**kwargs)
+        self.on_input_callback = on_input_callback
+        self.orientation = 'vertical'
+        self.spacing = '5dp'
+        self.size_hint_y = None
+        self.height = '300dp'
+        
+        # Display
+        self.display = Label(
+            text='8',
+            font_size='24sp',
+            size_hint_y=None,
+            height='60dp'
+        )
+        self.add_widget(self.display)
+        
+        # Keypad grid
+        keypad_grid = GridLayout(cols=3, spacing='5dp', size_hint_y=None, height='240dp')
+        
+        # Number buttons
+        for i in range(1, 10):
+            btn = Button(text=str(i), font_size='20sp')
+            btn.bind(on_press=lambda x, num=i: self.add_digit(str(num)))
+            keypad_grid.add_widget(btn)
+        
+        # Bottom row: Clear, 0, Decimal
+        clear_btn = Button(text='C', font_size='20sp', background_color=[1, 0.3, 0.3, 1])
+        clear_btn.bind(on_press=lambda x: self.clear())
+        keypad_grid.add_widget(clear_btn)
+        
+        zero_btn = Button(text='0', font_size='20sp')
+        zero_btn.bind(on_press=lambda x: self.add_digit('0'))
+        keypad_grid.add_widget(zero_btn)
+        
+        decimal_btn = Button(text='.', font_size='20sp')
+        decimal_btn.bind(on_press=lambda x: self.add_decimal())
+        keypad_grid.add_widget(decimal_btn)
+        
+        self.add_widget(keypad_grid)
+        
+        self.current_value = '8.0'
+    
+    def add_digit(self, digit):
+        if self.current_value == '8.0':
+            self.current_value = digit
+        else:
+            self.current_value += digit
+        self.display.text = self.current_value
+        self.on_input_callback(self.current_value)
+    
+    def add_decimal(self):
+        if '.' not in self.current_value:
+            self.current_value += '.'
+            self.display.text = self.current_value
+            self.on_input_callback(self.current_value)
+    
+    def clear(self):
+        self.current_value = '8.0'
+        self.display.text = self.current_value
+        self.on_input_callback(self.current_value)
+    
+    def get_value(self):
+        return self.current_value
+
+class TouchDatePicker(BoxLayout):
+    def __init__(self, on_date_changed, **kwargs):
+        super().__init__(**kwargs)
+        self.on_date_changed = on_date_changed
+        self.orientation = 'vertical'
+        self.spacing = '10dp'
+        self.size_hint_y = None
+        self.height = '200dp'
+        
+        self.current_date = datetime.date.today()
+        
+        # Date display
+        self.date_label = Label(
+            text=self.current_date.strftime('%Y-%m-%d'),
+            font_size='24sp',
+            size_hint_y=None,
+            height='60dp'
+        )
+        self.add_widget(self.date_label)
+        
+        # Navigation buttons
+        nav_layout = BoxLayout(orientation='horizontal', spacing='10dp', size_hint_y=None, height='60dp')
+        
+        prev_day_btn = Button(text='- Day', font_size='16sp')
+        prev_day_btn.bind(on_press=lambda x: self.change_date(-1))
+        nav_layout.add_widget(prev_day_btn)
+        
+        prev_week_btn = Button(text='- Week', font_size='16sp')
+        prev_week_btn.bind(on_press=lambda x: self.change_date(-7))
+        nav_layout.add_widget(prev_week_btn)
+        
+        today_btn = Button(text='Today', font_size='16sp', background_color=[0.3, 0.8, 0.3, 1])
+        today_btn.bind(on_press=lambda x: self.set_today())
+        nav_layout.add_widget(today_btn)
+        
+        next_week_btn = Button(text='Week +', font_size='16sp')
+        next_week_btn.bind(on_press=lambda x: self.change_date(7))
+        nav_layout.add_widget(next_week_btn)
+        
+        next_day_btn = Button(text='Day +', font_size='16sp')
+        next_day_btn.bind(on_press=lambda x: self.change_date(1))
+        nav_layout.add_widget(next_day_btn)
+        
+        self.add_widget(nav_layout)
+        
+        # Month navigation
+        month_layout = BoxLayout(orientation='horizontal', spacing='10dp', size_hint_y=None, height='60dp')
+        
+        prev_month_btn = Button(text='- Month', font_size='16sp')
+        prev_month_btn.bind(on_press=lambda x: self.change_month(-1))
+        month_layout.add_widget(prev_month_btn)
+        
+        next_month_btn = Button(text='Month +', font_size='16sp')
+        next_month_btn.bind(on_press=lambda x: self.change_month(1))
+        month_layout.add_widget(next_month_btn)
+        
+        self.add_widget(month_layout)
+    
+    def change_date(self, days):
+        self.current_date += datetime.timedelta(days=days)
+        self.update_display()
+    
+    def change_month(self, months):
+        if months > 0:
+            if self.current_date.month == 12:
+                self.current_date = self.current_date.replace(year=self.current_date.year + 1, month=1)
+            else:
+                self.current_date = self.current_date.replace(month=self.current_date.month + 1)
+        else:
+            if self.current_date.month == 1:
+                self.current_date = self.current_date.replace(year=self.current_date.year - 1, month=12)
+            else:
+                self.current_date = self.current_date.replace(month=self.current_date.month - 1)
+        self.update_display()
+    
+    def set_today(self):
+        self.current_date = datetime.date.today()
+        self.update_display()
+    
+    def update_display(self):
+        self.date_label.text = self.current_date.strftime('%Y-%m-%d')
+        self.on_date_changed(self.current_date)
+    
+    def get_date(self):
+        return self.current_date
+
+class AddEntryDialog(Popup):
+    def __init__(self, db_manager: 'DatabaseManager', config: 'Config', on_save_callback, **kwargs):
+        super().__init__(**kwargs)
+        self.db_manager = db_manager
+        self.config = config
+        self.on_save_callback = on_save_callback
+        
+        self.title = 'Add New Time Entry'
+        self.size_hint = (0.9, 0.9)
+        self.auto_dismiss = False
+        
+        main_layout = BoxLayout(orientation='vertical', spacing='15dp', padding='20dp')
+        
+        # Employee selection
+        employee_section = BoxLayout(orientation='vertical', spacing='5dp', size_hint_y=None, height='100dp')
+        employee_section.add_widget(Label(text='Employee:', size_hint_y=None, height='30dp', font_size='18sp', bold=True))
+        
+        # Get employee list from config only
+        employee_names = self.config.employees.names
+        
+        self.employee_spinner = Spinner(
+            text='Select Employee',
+            values=employee_names,
+            size_hint_y=None,
+            height='60dp',
+            font_size='18sp'
+        )
+        employee_section.add_widget(self.employee_spinner)
+        main_layout.add_widget(employee_section)
+        
+        # Date selection with touch picker
+        date_section = BoxLayout(orientation='vertical', spacing='5dp', size_hint_y=None, height='230dp')
+        date_section.add_widget(Label(text='Date:', size_hint_y=None, height='30dp', font_size='18sp', bold=True))
+        
+        self.date_picker = TouchDatePicker(on_date_changed=self.on_date_changed)
+        date_section.add_widget(self.date_picker)
+        main_layout.add_widget(date_section)
+        
+        # Hours input with touch keypad
+        hours_section = BoxLayout(orientation='vertical', spacing='5dp', size_hint_y=None, height='330dp')
+        hours_section.add_widget(Label(text='Hours Worked:', size_hint_y=None, height='30dp', font_size='18sp', bold=True))
+        
+        self.hours_keypad = TouchKeypad(on_input_callback=self.on_hours_changed)
+        hours_section.add_widget(self.hours_keypad)
+        main_layout.add_widget(hours_section)
+        
+        # Action buttons
+        button_layout = BoxLayout(orientation='horizontal', spacing='15dp', size_hint_y=None, height='70dp')
+        
+        save_btn = Button(text='Save Entry', background_color=[0.3, 1, 0.3, 1], font_size='20sp')
+        save_btn.bind(on_press=self.save_entry)
+        
+        cancel_btn = Button(text='Cancel', background_color=[1, 0.3, 0.3, 1], font_size='20sp')
+        cancel_btn.bind(on_press=self.dismiss)
+        
+        button_layout.add_widget(save_btn)
+        button_layout.add_widget(cancel_btn)
+        main_layout.add_widget(button_layout)
+        
+        self.content = main_layout
+        
+        # Initialize values
+        self.selected_date = datetime.date.today()
+        self.selected_hours = '8.0'
+    
+    def on_date_changed(self, new_date):
+        self.selected_date = new_date
+    
+    def on_hours_changed(self, new_hours):
+        self.selected_hours = new_hours
+    
+    def save_entry(self, instance):
+        try:
+            # Validate inputs
+            if self.employee_spinner.text == 'Select Employee':
+                self.show_error("Please select an employee")
+                return
+            
+            if not self.selected_hours or self.selected_hours == '8.0':
+                self.show_error("Please enter hours worked")
+                return
+            
+            # Parse inputs
+            employee_name = self.employee_spinner.text
+            work_date = self.selected_date
+            hours = float(self.selected_hours)
+            
+            # Get employee ID from database (create if doesn't exist)
+            employee_id = self.get_or_create_employee_id(employee_name)
+            
+            if hours <= 0 or hours > 24:
+                self.show_error("Hours must be between 0 and 24")
+                return
+            
+            # Calculate clock in and clock out times
+            # Default to 8 AM start time
+            clock_in = datetime.datetime.combine(work_date, datetime.time(8, 0))
+            clock_out = clock_in + datetime.timedelta(hours=hours)
+            
+            # Create time record using direct database insertion
+            success = self._add_complete_time_record(employee_id, clock_in, clock_out)
+            
+            if success:
+                self.show_success("Time entry added successfully!")
+                self.on_save_callback()
+                Clock.schedule_once(lambda dt: self.dismiss(), 1)
+            else:
+                self.show_error("Failed to add time entry")
+                
+        except ValueError as e:
+            self.show_error(f"Invalid input: {str(e)}")
+        except Exception as e:
+            self.show_error(f"Error: {str(e)}")
+    
+    def get_or_create_employee_id(self, employee_name: str) -> int:
+        """Get employee ID from database, create if doesn't exist"""
+        # First try to find existing employee
+        employees = self.db_manager.get_employees(active_only=False)
+        for emp in employees:
+            if emp.name == employee_name:
+                return emp.id
+        
+        # If not found, create new employee
+        return self.db_manager.add_employee(employee_name)
+    
+    def _add_complete_time_record(self, employee_id: int, clock_in: datetime.datetime, clock_out: datetime.datetime) -> bool:
+        """Add a complete time record with both clock in and clock out times"""
+        import sqlite3
+        try:
+            with sqlite3.connect(self.db_manager.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO time_records (employee_id, clock_in, clock_out, created_at) 
+                    VALUES (?, ?, ?, ?)
+                ''', (employee_id, clock_in, clock_out, datetime.datetime.now()))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception:
+            return False
+    
+    def show_error(self, message: str):
+        error_popup = Popup(
+            title='Error',
+            content=Label(text=message),
+            size_hint=(0.6, 0.4)
+        )
+        error_popup.open()
+        Clock.schedule_once(lambda dt: error_popup.dismiss(), 3)
+    
+    def show_success(self, message: str):
+        success_popup = Popup(
+            title='Success',
+            content=Label(text=message),
+            size_hint=(0.6, 0.4)
+        )
+        success_popup.open()
+        Clock.schedule_once(lambda dt: success_popup.dismiss(), 2)
+
 class AdminUI(BoxLayout):
     def __init__(self, db_manager: DatabaseManager, config: Config, **kwargs):
         super().__init__(**kwargs)
@@ -436,10 +747,17 @@ class AdminUI(BoxLayout):
         header_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height='50dp', spacing='10dp')
         
         title_label = Label(
-            text='Admin Panel - Time Records (Last 2 Weeks)',
+            text='Admin Panel - Time Records (Last 14 Days)',
             font_size='18sp',
-            size_hint_x=0.7
+            size_hint_x=0.55
         )
+        
+        add_entry_btn = Button(
+            text='Add Entry',
+            size_hint_x=0.15,
+            background_color=[0.2, 0.6, 0.8, 1]
+        )
+        add_entry_btn.bind(on_press=lambda x: self.show_add_entry_dialog())
         
         refresh_btn = Button(
             text='Refresh',
@@ -456,6 +774,7 @@ class AdminUI(BoxLayout):
         email_btn.bind(on_press=lambda x: self.send_email_report())
         
         header_layout.add_widget(title_label)
+        header_layout.add_widget(add_entry_btn)
         header_layout.add_widget(refresh_btn)
         header_layout.add_widget(email_btn)
         self.add_widget(header_layout)
@@ -491,9 +810,9 @@ class AdminUI(BoxLayout):
     def load_time_records(self):
         self.records_layout.clear_widgets()
         
-        # Get records from last 2 weeks
+        # Get records from last 14 days (including today)
         end_date = datetime.date.today()
-        start_date = end_date - datetime.timedelta(days=14)
+        start_date = end_date - datetime.timedelta(days=13)  # 13 days ago + today = 14 days total
         
         records = self.db_manager.get_time_records(
             start_date=start_date,
@@ -551,6 +870,26 @@ class AdminUI(BoxLayout):
         except Exception as e:
             self.show_message(f"Error deleting record: {str(e)}")
     
+    def get_previous_two_weeks_date_range(self) -> Tuple[datetime.date, datetime.date]:
+        """Calculate date range for the previous two complete work weeks"""
+        today = datetime.date.today()
+        work_week_start_day = self.config.payroll.start_day
+        
+        # Find the start of the current work week
+        days_since_start = (today.weekday() - work_week_start_day) % 7
+        current_week_start = today - datetime.timedelta(days=days_since_start)
+        
+        # Go back to the start of the previous week (1 week ago)
+        previous_week_start = current_week_start - datetime.timedelta(weeks=1)
+        
+        # Go back one more week to get the start of two weeks ago
+        two_weeks_ago_start = previous_week_start - datetime.timedelta(weeks=1)
+        
+        # End date is the last day of the previous week (day before current week starts)
+        end_date = current_week_start - datetime.timedelta(days=1)
+        
+        return two_weeks_ago_start, end_date
+    
     def send_email_report(self):
         if not self.config.email.enable_email_reports:
             self.show_message("Email reports are disabled in settings")
@@ -561,9 +900,8 @@ class AdminUI(BoxLayout):
             return
         
         try:
-            # Generate report data
-            end_date = datetime.date.today()
-            start_date = end_date - datetime.timedelta(days=14)
+            # Generate report data for previous two complete work weeks
+            start_date, end_date = self.get_previous_two_weeks_date_range()
             
             records = self.db_manager.get_time_records(
                 start_date=start_date,
@@ -586,6 +924,15 @@ class AdminUI(BoxLayout):
                 
         except Exception as e:
             self.show_message(f"Error sending report: {str(e)}")
+    
+    def show_add_entry_dialog(self):
+        """Show dialog to add a new time entry"""
+        add_dialog = AddEntryDialog(
+            db_manager=self.db_manager,
+            config=self.config,
+            on_save_callback=self.load_time_records
+        )
+        add_dialog.open()
     
     def generate_csv_report(self, records: List[TimeRecord], employees: dict) -> str:
         output = io.StringIO()
