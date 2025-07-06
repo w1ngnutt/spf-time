@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SPF Time Tracking
+Comment=Employee Time Tracking Application
+Exec=/home/pi/spf-time/run.sh
+Icon=/home/pi/spf-time/icon.png
+Terminal=false
+StartupNotify=true
+Categories=Office;
+X-GNOME-Autostart-enabled=true
+Hidden=false
